@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=1920,height=1080,initial-scale=1">
+<title>Work Orders Dashboard</title>
+
+<!-- Google Fonts (optional - falls back to system bold sans-serif if blocked) -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800;900&display=swap">
+
+<style type="text/css">
+/* =============================================================
+   Reset + base
+   ============================================================= */
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+html, body {
+  width: 1920px;
+  height: 1080px;
+  background: #000000;
+  color: #ffffff;
+  font-family: 'Archivo', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* =============================================================
+   Chart container - one per chart, stacked, cross-faded
+   ============================================================= */
+.chart-container {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 1920px;
+  height: 1080px;
+  opacity: 0;
+  -webkit-transition: opacity 0.4s ease-out;
+  -o-transition: opacity 0.4s ease-out;
+  transition: opacity 0.4s ease-out;
+}
+.chart-container.is-visible { opacity: 1; }
+
+/* =============================================================
+   Title + subtitle
+   ============================================================= */
+.chart-title {
+  text-align: center;
+  font-weight: 900;
+  font-size: 84px;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  padding-top: 26px;
+  color: #ffffff;
+}
+
+.chart-subtitle {
+  text-align: center;
+  font-size: 28px;
+  font-weight: 600;
+  line-height: 1;
+  color: #888888;
+  margin-top: 12px;
+  margin-bottom: 22px;
+  letter-spacing: 0.01em;
+}
+
+/* =============================================================
+   Chart area
+   ============================================================= */
+.chart-area {
+  margin: 0 80px;
+  position: relative;
+}
+
+.row {
+  display: -webkit-box;
+  display: -webkit-flex;
+  display: -ms-flexbox;
+  display: flex;
+  -webkit-box-align: center;
+  -webkit-align-items: center;
+  -ms-flex-align: center;
+  align-items: center;
+}
+
+.name {
+  width: 220px;
+  text-align: right;
+  padding-right: 24px;
+  font-weight: 700;
+  font-size: 32px;
+  line-height: 1;
+  color: #ffffff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.bar-track {
+  -webkit-box-flex: 1;
+  -webkit-flex: 1 1 auto;
+  -ms-flex: 1 1 auto;
+  flex: 1 1 auto;
+  display: -webkit-box;
+  display: -webkit-flex;
+  display: -ms-flexbox;
+  display: flex;
+  -webkit-box-align: center;
+  -webkit-align-items: center;
+  -ms-flex-align: center;
+  align-items: center;
+  position: relative;
+  min-width: 0;
+}
+
+.bar {
+  width: 0;
+  /* height set inline per chart so it scales with row count */
+  -webkit-transition: width 8s cubic-bezier(0.22, 1, 0.36, 1);
+  -o-transition: width 8s cubic-bezier(0.22, 1, 0.36, 1);
+  transition: width 8s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.value {
+  display: inline-block;
+  margin-left: 14px;
+  font-weight: 800;
+  font-size: 30px;
+  line-height: 1;
+  color: #ffffff;
+  white-space: nowrap;
+  opacity: 0;
+  -webkit-transform: scale(0.4);
+  -ms-transform: scale(0.4);
+  transform: scale(0.4);
+  -webkit-transition: opacity 0.25s ease-out, -webkit-transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+  -o-transition: opacity 0.25s ease-out, -o-transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+  transition: opacity 0.25s ease-out, transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.value.is-popped {
+  opacity: 1;
+  -webkit-transform: scale(1);
+  -ms-transform: scale(1);
+  transform: scale(1);
+}
+
+/* =============================================================
+   Axis (bottom)
+   ============================================================= */
+.axis-row {
+  display: -webkit-box;
+  display: -webkit-flex;
+  display: -ms-flexbox;
+  display: flex;
+  margin-top: 8px;
+}
+
+.axis-spacer {
+  width: 220px;
+  padding-right: 24px;
+  -webkit-flex: 0 0 220px;
+  -ms-flex: 0 0 220px;
+  flex: 0 0 220px;
+}
+
+.axis-track {
+  -webkit-box-flex: 1;
+  -webkit-flex: 1 1 auto;
+  -ms-flex: 1 1 auto;
+  flex: 1 1 auto;
+  position: relative;
+  height: 38px;
+  min-width: 0;
+}
+
+.axis-line {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 1px;
+  background: #4a4a4a;
+}
+
+.tick-label {
+  position: absolute;
+  top: 8px;
+  -webkit-transform: translateX(-50%);
+  -ms-transform: translateX(-50%);
+  transform: translateX(-50%);
+  color: #aaaaaa;
+  font-size: 22px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* =============================================================
+   Footer (last updated)
+   ============================================================= */
+#footer {
+  position: fixed;
+  right: 24px;
+  bottom: 14px;
+  color: #555555;
+  font-size: 16px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  z-index: 10;
+}
+
+/* =============================================================
+   Error fallback (only shown if data.json fails to load)
+   ============================================================= */
+#error-msg {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  -webkit-transform: translate(-50%, -50%);
+  -ms-transform: translate(-50%, -50%);
+  transform: translate(-50%, -50%);
+  color: #888888;
+  font-size: 28px;
+  text-align: center;
+  display: none;
+  max-width: 1200px;
+  line-height: 1.4;
+}
+</style>
+</head>
+<body>
+
+<div id="chart1" class="chart-container"></div>
+<div id="chart2" class="chart-container"></div>
+<div id="footer">Last updated: --</div>
+<div id="error-msg"></div>
+
+<script type="text/javascript">
+/* =================================================================
+   Work Orders Dashboard - vanilla ES5
+   Compatible with old Android WebViews (5.x+).
+   No const/let, arrow funcs, template literals, fetch, modules, etc.
+   ================================================================= */
+(function () {
+  'use strict';
+
+  /* ---------------------------------------------------------------
+     Color stops by rank (top of chart -> bottom of chart)
+     Active:   red -> orange -> yellow -> green
+     Completed: dark green -> light yellow-green
+     --------------------------------------------------------------- */
+  var ACTIVE_STOPS = [
+    [228, 28,  36],   // red
+    [240, 88,  30],   // red-orange
+    [246, 138, 28],   // orange
+    [251, 178, 28],   // amber
+    [251, 220, 32],   // yellow
+    [195, 215, 58],   // yellow-green
+    [150, 200, 75]    // green
+  ];
+
+  var COMPLETED_STOPS = [
+    [12,  100, 50],   // darkest green
+    [40,  145, 58],
+    [100, 175, 60],
+    [175, 205, 65],
+    [215, 225, 75]    // lightest yellow-green
+  ];
+
+  /* ---------------------------------------------------------------
+     Tiny helpers
+     --------------------------------------------------------------- */
+  function rgbToString(rgb) {
+    return 'rgb(' + rgb[0] + ',' + rgb[1] + ',' + rgb[2] + ')';
+  }
+
+  function interpolateStops(stops, t) {
+    if (t <= 0) return stops[0];
+    if (t >= 1) return stops[stops.length - 1];
+    var seg = t * (stops.length - 1);
+    var i = Math.floor(seg);
+    var f = seg - i;
+    var a = stops[i];
+    var b = stops[i + 1];
+    return [
+      Math.round(a[0] + (b[0] - a[0]) * f),
+      Math.round(a[1] + (b[1] - a[1]) * f),
+      Math.round(a[2] + (b[2] - a[2]) * f)
+    ];
+  }
+
+  function colorForRank(stops, rank, total) {
+    var t = total > 1 ? rank / (total - 1) : 0;
+    return rgbToString(interpolateStops(stops, t));
+  }
+
+  function byValueDesc(a, b) {
+    return b.value - a.value;
+  }
+
+  /* Pick a "nice" axis max + tick step so the axis ends on a round number */
+  function getNiceScale(maxVal) {
+    var presets = [
+      [5, 1],   [10, 2],  [15, 3],  [20, 5],  [25, 5],  [30, 5],
+      [40, 5],  [50, 10], [60, 10], [70, 10], [80, 10], [100, 10],
+      [120, 20], [150, 25], [200, 25], [250, 50], [300, 50], [500, 50]
+    ];
+    for (var i = 0; i < presets.length; i++) {
+      if (presets[i][0] >= maxVal) {
+        return { max: presets[i][0], step: presets[i][1] };
+      }
+    }
+    var m = Math.ceil(maxVal / 100) * 100;
+    return { max: m, step: m / 10 };
+  }
+
+  /* ---------------------------------------------------------------
+     Build a chart's DOM (rows at width 0; animation kicks in later)
+     --------------------------------------------------------------- */
+  function buildChart(container, title, subtitle, items, stops) {
+    container.innerHTML = '';
+
+    var titleEl = document.createElement('div');
+    titleEl.className = 'chart-title';
+    titleEl.appendChild(document.createTextNode(title));
+    container.appendChild(titleEl);
+
+    var subEl = document.createElement('div');
+    subEl.className = 'chart-subtitle';
+    subEl.appendChild(document.createTextNode(subtitle));
+    container.appendChild(subEl);
+
+    var area = document.createElement('div');
+    area.className = 'chart-area';
+    container.appendChild(area);
+
+    var count = items.length;
+    if (count === 0) return;
+
+    var maxVal = items[0].value;
+    var scale  = getNiceScale(maxVal);
+
+    /* Layout sizing - adapts to count (10-20 supported gracefully) */
+    var availForRows = 860;            // px reserved for stacked rows
+    var rowGap       = (count >= 18) ? 4 : 6;
+    var rowHeight    = Math.floor(availForRows / count) - rowGap;
+    if (rowHeight > 64) rowHeight = 64;
+    if (rowHeight < 32) rowHeight = 32;
+    var barHeight    = rowHeight - 6;
+    if (barHeight < 26) barHeight = 26;
+
+    /* Rows */
+    for (var i = 0; i < count; i++) {
+      var row = document.createElement('div');
+      row.className = 'row';
+      row.style.height       = rowHeight + 'px';
+      row.style.marginBottom = rowGap + 'px';
+
+      var nameEl = document.createElement('div');
+      nameEl.className = 'name';
+      nameEl.appendChild(document.createTextNode(items[i].name));
+      row.appendChild(nameEl);
+
+      var track = document.createElement('div');
+      track.className = 'bar-track';
+
+      var bar = document.createElement('div');
+      bar.className = 'bar';
+      bar.style.height = barHeight + 'px';
+      bar.style.backgroundColor = colorForRank(stops, i, count);
+      var pct = (items[i].value / scale.max) * 100;
+      bar.setAttribute('data-target-pct', String(pct));
+      track.appendChild(bar);
+
+      var valEl = document.createElement('div');
+      valEl.className = 'value';
+      valEl.appendChild(document.createTextNode(String(items[i].value)));
+      track.appendChild(valEl);
+
+      row.appendChild(track);
+      area.appendChild(row);
+    }
+
+    /* Axis */
+    var axisRow = document.createElement('div');
+    axisRow.className = 'axis-row';
+
+    var spacer = document.createElement('div');
+    spacer.className = 'axis-spacer';
+    axisRow.appendChild(spacer);
+
+    var axisTrack = document.createElement('div');
+    axisTrack.className = 'axis-track';
+
+    var axisLine = document.createElement('div');
+    axisLine.className = 'axis-line';
+    axisTrack.appendChild(axisLine);
+
+    var t = 0;
+    while (t <= scale.max + 0.0001) {
+      var tick = document.createElement('div');
+      tick.className = 'tick-label';
+      tick.style.left = ((t / scale.max) * 100) + '%';
+      tick.appendChild(document.createTextNode(String(Math.round(t))));
+      axisTrack.appendChild(tick);
+      t += scale.step;
+    }
+
+    axisRow.appendChild(axisTrack);
+    area.appendChild(axisRow);
+  }
+
+  /* ---------------------------------------------------------------
+     Run a single chart's 20-second sequence:
+       0.0 - 8.0s  : bars grow 0 -> target width (CSS transition)
+       8.0 - 9.5s  : value labels pop in, top to bottom (1.5s stagger)
+       9.5 -19.6s  : static
+      19.6 -20.0s  : container fade-out (handled by caller)
+     --------------------------------------------------------------- */
+  function runChartAnimation(chart) {
+    var bars   = chart.getElementsByClassName('bar');
+    var values = chart.getElementsByClassName('value');
+    var n      = values.length;
+
+    /* Trigger bar growth a tick later so the browser commits initial
+       width:0 state and the transition actually fires. */
+    setTimeout(function () {
+      for (var i = 0; i < bars.length; i++) {
+        var pct = bars[i].getAttribute('data-target-pct');
+        bars[i].style.width = pct + '%';
+      }
+    }, 80);
+
+    /* Stagger value pops from t=8000ms to t=9500ms */
+    function makePop(idx) {
+      return function () {
+        values[idx].className = 'value is-popped';
+      };
+    }
+    for (var j = 0; j < n; j++) {
+      var delay = (n > 1) ? (j * 1500 / (n - 1)) : 0;
+      setTimeout(makePop(j), 8000 + delay);
+    }
+  }
+
+  /* ---------------------------------------------------------------
+     Load data.json via XMLHttpRequest (fetch isn't reliable on old
+     Android WebViews). Cache-bust with a timestamp so each OptiSigns
+     reload pulls the latest file from GitHub Pages.
+     --------------------------------------------------------------- */
+  function loadData(callback) {
+    var xhr = new XMLHttpRequest();
+    var url = 'data.json?t=' + new Date().getTime();
+    try {
+      xhr.open('GET', url, true);
+    } catch (eOpen) {
+      callback(eOpen, null);
+      return;
+    }
+    xhr.onreadystatechange = function () {
+      if (xhr.readyState !== 4) return;
+      if (xhr.status >= 200 && xhr.status < 400) {
+        try {
+          var data = JSON.parse(xhr.responseText);
+          callback(null, data);
+        } catch (eParse) {
+          callback(eParse, null);
+        }
+      } else {
+        callback(new Error('HTTP ' + xhr.status), null);
+      }
+    };
+    xhr.onerror = function () {
+      callback(new Error('Network error loading data.json'), null);
+    };
+    xhr.send(null);
+  }
+
+  function showError(msg) {
+    var em = document.getElementById('error-msg');
+    em.style.display = 'block';
+    em.appendChild(document.createTextNode(msg));
+  }
+
+  /* ---------------------------------------------------------------
+     Main
+     --------------------------------------------------------------- */
+  function start() {
+    loadData(function (err, data) {
+      if (err || !data) {
+        showError('Could not load data.json' + (err && err.message ? (': ' + err.message) : ''));
+        return;
+      }
+
+      /* Auto-sort high-to-low so the data file can be in any order */
+      var active    = (data.active && data.active.length) ? data.active.slice() : [];
+      var completed = (data.completedMTD && data.completedMTD.length) ? data.completedMTD.slice() : [];
+      active.sort(byValueDesc);
+      completed.sort(byValueDesc);
+
+      var asOf = data.asOf || '';
+
+      /* Footer */
+      var footer = document.getElementById('footer');
+      footer.firstChild.nodeValue = 'Last updated: ' + asOf;
+
+      var chart1 = document.getElementById('chart1');
+      var chart2 = document.getElementById('chart2');
+
+      /* Build both charts up front. chart2 stays at opacity:0 until later. */
+      buildChart(
+        chart1,
+        'Active Work Orders',
+        'As of ' + asOf,
+        active,
+        ACTIVE_STOPS
+      );
+      buildChart(
+        chart2,
+        'Completed Work Orders',
+        'MTD \u2022 As of ' + asOf,
+        completed,
+        COMPLETED_STOPS
+      );
+
+      /* ----- t = 0s: chart 1 fades in (0.4s) and animation kicks off ----- */
+      chart1.className = 'chart-container is-visible';
+      runChartAnimation(chart1);
+
+      /* ----- t = 19.6s: cross-fade chart 1 out, chart 2 in ----- */
+      setTimeout(function () {
+        chart1.className = 'chart-container';
+        chart2.className = 'chart-container is-visible';
+      }, 19600);
+
+      /* ----- t = 20.0s: chart 2 animation kicks off ----- */
+      setTimeout(function () {
+        runChartAnimation(chart2);
+      }, 20000);
+
+      /* After t = 40s: nothing. The page freezes on chart 2 fully
+         rendered. OptiSigns will rotate to the next slide on its own. */
+    });
+  }
+
+  /* DOM-ready (Android WebView 5+ supports addEventListener) */
+  if (document.readyState === 'complete' || document.readyState === 'interactive') {
+    start();
+  } else if (document.addEventListener) {
+    document.addEventListener('DOMContentLoaded', start, false);
+  } else {
+    /* Last-resort fallback for ancient engines */
+    window.onload = start;
+  }
+})();
+</script>
+
+</body>
+</html>
